@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- the AFrame library and 3rd party components -->
+    <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe-master.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-environment-component@1.3.2/dist/aframe-environment-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/components/sphere-collider.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/aframe-extras.controls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/physx@v0.1.0/dist/physx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.3/dist/aframe-blink-controls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/handy-work@3.1.10/build/handy-controls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/handy-work@3.1.10/build/magnet-helpers.min.js"></script>
+    <script src="simple-navmesh-constraint.js"></script>
+    <script src="mesh-shadows.js"></script>
+    <!-- Our custom behaviours -->
+    <script src="main.js"></script>
+  </head>
+  <body>
+    
+    <a-scene 
+        physx="autoLoad: true; delay: 1000; wasmUrl: https://cdn.jsdelivr.net/gh/c-frame/physx@v0.1.0/wasm/physx.release.wasm; useDefaultScene: false;"
+        webxr="overlayElement:#dom-overlay;"
+        reflection="directionalLight:#Sunlight;"
+        shadow="type: pcfsoft"
+        gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;">
+      
+      <a-assets>
+        <a-asset-item id="right-gltf" src="https://vazxmixjsiawhamofees.supabase.co/storage/v1/object/public/models/skeleton-right-hand-webxr/model.gltf"></a-asset-item>
+        <a-asset-item id="left-gltf" src="https://vazxmixjsiawhamofees.supabase.co/storage/v1/object/public/models/skeleton-left-hand-webxr/model.gltf"></a-asset-item>
+        <a-asset-item id="sword-gltf" src="https://cdn.glitch.global/ea696c2d-f911-4b61-96fe-70b04c7341ef/katana_new.glb?v=1690577442840"></a-asset-item>
+        <a-asset-item id="clock-gltf" src="https://cdn.glitch.global/d29f98b4-ddd1-4589-8b66-e2446690e697/vintage_grandfather_clock_01_1k-v2.glb?v=1647265174189"></a-asset-item>
+        <a-asset-item id="stew-gltf" src="https://cdn.glitch.global/ea696c2d-f911-4b61-96fe-70b04c7341ef/stewPot.gltf?v=1690908910164"></a-asset-item>
+        
+        <!-- Fire extinguisher asset -->
+<!--         <a-asset-item id="Fire-extinguisher" src="https://cdn.jsdelivr.net/gh/addy1997/3D-models@main/Dental%20Models/fire_extinguisher/fire_extinguisher.glb"></a-asset-item> -->
+        -
+        <a-asset-item id="coinmesh" src="https://cdn.glitch.global/ea696c2d-f911-4b61-96fe-70b04c7341ef/Simple_Coin.glb?v=1691077891382" ></a-asset-item>
+        <a-asset-item id="marker" src="https://cdn.glitch.global/ea696c2d-f911-4b61-96fe-70b04c7341ef/axisMarker.glb?v=1690647365823" ></a-asset-item>
+        
+        <a-mixin id="coin" gltf-model="#coinmesh" rotation="90 0 0"></a-mixin>
+        <a-mixin id="animations" animation__click="property: components.material.material.color; type: color; to: blue; startEvents: click; dur: 500;"></a-mixin>
+        <a-mixin id="blink" blink-controls="rotateOnTeleport:false;cameraRig: #cameraRig; teleportOrigin: #head; collisionEntities:.navmesh;"></a-mixin>
+      </a-assets>
+      
+      
+      <!-------------------->
+      <!-- Scene Elements -->
+      <!-------------------->
+      
+      <a-box id="tableBox" class="navmesh" position="-2 0.5 -1.5" rotation="0 45 0" color="#4CC3D9" shadow physx-body="type: static;"><!-- navmesh = teleport onto box --></a-box>
+      <a-box id="grabbyBox" position="-1.5 2 -1.5" width="0.25" height="0.25" depth="0.25" color="purple" shadow toggle-physics physx-body="type:dynamic;" data-magnet-range="0.2,0.1,360,180" data-pick-up="parent" class="magnet-left magnet-right" >
+        <a-box id="indicatorBox" position="0 0.15 0" width="0.1" height="0.1" depth="0.1" color="hotpink" shadow data-magnet-range="0.2,0.1,360,180" data-pick-up="parent" class="magnet-left magnet-right" ></a-box>
+      </a-box>
+      
+      <a-gltf-model id="pot" toggle-physics shadow="receive:false;" src="#stew-gltf" position="-2.25 2 -1.25" physx-body="type:dynamic;mass:2;">
+        <a-entity id="stew-handle-1" data-magnet-range="0.2,0.1,360,180" data-pick-up="parent" class="magnet-left magnet-right" position="0 0.35 -0.35" rotation="0 90 0"></a-entity>
+        <a-entity id="stew-handle-2" data-magnet-range="0.2,0.1,360,180" data-pick-up="parent" class="magnet-left magnet-right" position="0 0.35 0.35" rotation="0 90 0"></a-entity>
+      </a-gltf-model>
+      
+      <a-sphere position="0 1.25 -6" radius="1.25" color="#EF2D5E" shadow></a-sphere>
+      
+      <!-- adding physics to collide with sword and hands -->
+      <a-gltf-model id="clock" mesh-shadows src="#clock-gltf" position="-4 0.2 -1.5" rotation="0 51 0" physx-body="type:dynamic;mass:15;"><!-- Affected by Physx --></a-gltf-model>
+      <a-cylinder class="navmesh" position="2 1 -1.5" radius="0.5" height="1.5" color="#FFC65D" shadow physx-body="type:dynamic;mass:15;"><!-- navmesh = teleport onto cylinder and is affected by Physx --></a-cylinder>
+      
+      <!-- Navmesh (a-box) acting as a static collision object -->
+      <a-box id="ground" class="navmesh" position="0 0.01 -4" rotation="-90 0 0" width="12" depth="0.2" height="12" color="#20915c" shadow="cast:false; receive:true;" physx-body="type: static;"></a-box>
+      
+      <!-- Environment Component -->
+      <a-entity environment="preset:forest; lighting:none;"></a-entity>
+      
+       <!-- Lights -->
+      <a-light id="Sunlight" type="directional" position="-2 2.3 1.6" light="intensity: 0.6; castShadow: true; shadowCameraLeft: -8; shadowCameraBottom: -3.5; shadowCameraRight: 5; shadowCameraTop: 5; shadowCameraFar: 500; shadowCameraVisible: false;"></a-light>
+      <a-light id="fill-light" type="ambient" intensity="0"></a-light>
+      
+      <!-------------------->
+      <!-------------------->
+      
+      <!-- Elsewhere in the scene -->
+      
+      <!-- The Coin -->
+      <!-- data-magnet-range="0.5, 0.3, 0, 0" --- data-magnet-range="Magnetism Starts, When to move the hand to final position, Alignment of the hand, Hand Fully Aligned"  -->
+      <!-- starting point data-magnet-range="0.2,0.1,360,180" -->
+      <a-entity id="coin01" 
+                mixin="coin"
+                data-pick-up class="magnet-left magnet-right"
+                data-magnet-range="0.2,0.1,360,180"
+                position="0 1.25 -0.35">
+      </a-entity>
+      
+      <!-- The Marker -->
+      <!-- exported from Blender & using Blender coordinates -->
+      <!------------------------------------------------------------------>
+      <!-- Orientation of objects should match Hand mesh's orientation  -->
+      <!-- see Blender file for clarification                           -->
+      <!-- OR in the case of the marker add an empty a-entity with the  -->
+      <!-- rotation set to correct the object orientation.               -->
+      <!------------------------------------------------------------------>
+      <a-gltf-model id="marker01" 
+                    src="#marker"
+                    mesh-shadows
+                    position="0.3 1.25 0">
+        
+              <!-- Corrects marker orientation -->  
+              <a-entity id="marker01grab" 
+                        rotation="90 0 0" 
+                        data-pick-up="parent"
+                        class="magnet-left magnet-right" 
+                        data-magnet-range="0.2,0.1,360,-90" >
+              </a-entity>
+        
+      </a-gltf-model><!-- End of Marker01 Object -->
+      
+      <!-- Fire extinguisher glTF-->
+<!--       <a-gltf-model id="fire-extinguisher" 
+                    gltf-model="#Fire-extinguisher" 
+                    rotation="0 -90 0" scale="0.95 0.95 0.95" 
+                    position="-0.3 1.0 -0.2" 
+                    mesh-shadows 
+                    data-pick-up class="magnet-left magnet-right"
+                    data-magnet-range="0.2,0.1,360,-90">
+      </a-gltf-model> -->
+      
+      <!------------------------------------------------------->
+      <!--        Camera Rig, Camera and handy-controls      -->        
+      <!------------------------------------------------------->
+      <a-entity 
+          id="cameraRig"
+          simple-navmesh-constraint="navmesh:.navmesh;fall:0.5;height:0;exclude:.navmesh-hole;"
+          movement-controls="speed:0.15;camera:#head;"
+          position="0 0 1" rotation="0 0 0" origin-on-ar-start>
+          
+          <!------------>
+          <!-- camera -->
+          <!------------>
+          <a-entity id="head"
+            camera="near:0.01;"
+            look-controls="pointerLockEnabled: false"
+            position="0 1.65 0">
+          </a-entity><!-- End Camera -->
+
+          <!----------------------------->
+          <!-- xr follow : See main.js -->
+          <!----------------------------->
+          <a-entity xr-follow>
+              <!-- Katana Sword -->
+              <a-gltf-model
+                id="sword" src="#sword-gltf"
+                mesh-shadows
+                data-pick-up class="magnet-left magnet-right"
+                position="-0.2 -0.4 0" rotation="-30 180 0" scale="0.6,0.6,1"
+                animation__restore_position="startEvents:putdown;pauseEvents:pickup;property:position;to:-0.2 -0.4 0;easing:easeOutBack;"
+                animation__restore_rotation="startEvents:putdown;pauseEvents:pickup;property:rotation;to:-30 180 0;easing:easeOutBack;">
+                  <a-box physx-body="type: kinematic;" width="0.03" height="0.03" depth="0.790" rotation="-16 0 0" position="0 -0.062 -0.331" visible="false"></a-box>
+              </a-gltf-model>
+          </a-entity><!-- end of xr-follow
+
+        
+          <!--------------------------------------->
+          <!-- Hand tracking with handy-controls -->
+          <!--------------------------------------->
+        
+            <a-entity handy-controls="right:#right-gltf;materialOverride:right;" material="color:gold;metalness:1;roughness:0;"><!-- materialOverride:both; or right or left -->
+
+            <!-- Blink Teleport using the finger tips when the user points -->
+            <a-entity data-right="index-finger-tip" mixin="blink" blink-controls="snapTurn:false;startEvents:pose_point_fuseShort;endEvents:pose_point_fuseLong;cancelEvents:pose_cancel_point;"></a-entity>
+            <a-entity data-left="index-finger-tip"  mixin="blink" blink-controls="snapTurn:false;startEvents:pose_point_fuseShort;endEvents:pose_point_fuseLong;cancelEvents:pose_cancel_point;"></a-entity>
+
+            <!-- Attach labels to show detected Pose or Controller button -->
+            <a-entity data-right="ray">
+                <a-entity class="pose-label" position="0 0 -0.22" text="value: Hello World; align: center;" visible="true" ></a-entity>
+            </a-entity>
+            <a-entity data-left="ray">
+                <a-entity class="pose-label" position="0 0 -0.22" text="value: Hello World; align: center;" visible="true" ></a-entity>
+            </a-entity>
+                        
+            
+            <!------------------------------->
+            <!-- Magnets: Grabbing objects -->
+            <!------------------------------->
+            <!-- These get drawn towards grabable objects, moving the whole hand and the attached elements-->
+            <a-entity id="left-magnet" data-left="grip"  data-magnet="magnet-left"  grab-magnet-target="startEvents:squeezestart,pose_fist;stopEvents:pose_flat_fuseShort,squeezeend;noMagnetEl:#left-no-magnet;"></a-entity>
+            <a-entity id="right-magnet" data-right="grip" data-magnet="magnet-right" grab-magnet-target="startEvents:squeezestart,pose_fist;stopEvents:pose_flat_fuseShort,squeezeend;noMagnetEl:#right-no-magnet;"></a-entity>
+            <!-- Markers to show us Where the hands pickup objects i.e. origins -->
+            <a-entity id="left-no-magnet" data-left="grip" data-no-magnet><a-sphere radius="0.01" visible="false" ></a-sphere></a-entity>
+            <a-entity id="right-no-magnet" data-right="grip" data-no-magnet><a-sphere radius="0.01" visible="false" ></a-sphere></a-entity>
+            
+            <!--------------------------------------------->
+            <!-- Physx implemented in hand's Finger tips -->
+            <!--------------------------------------------->
+            <!-- Invisible objects at the tips of each finger for physics or intersections -->
+            <a-sphere data-right="index-finger-tip" radius="0.004" visible="false" physx-body="type: kinematic;"></a-sphere>
+            <a-sphere data-right="middle-finger-tip" radius="0.004" visible="false" physx-body="type: kinematic;"></a-sphere>
+            <a-sphere data-right="ring-finger-tip" radius="0.004" visible="false" physx-body="type: kinematic;"></a-sphere>
+            <a-sphere data-right="pinky-finger-tip" radius="0.004" visible="false" physx-body="type: kinematic;"></a-sphere>
+            <a-sphere data-right="thumb-tip" radius="0.004" visible="false" physx-body="type: kinematic;"></a-sphere>
+            <a-sphere data-left="index-finger-tip" radius="0.004" visible="false" physx-body="type: kinematic;"></a-sphere>
+            <a-sphere data-left="middle-finger-tip" radius="0.004" visible="false" physx-body="type: kinematic;"></a-sphere>
+            <a-sphere data-left="ring-finger-tip" radius="0.004" visible="false" physx-body="type: kinematic;"></a-sphere>
+            <a-sphere data-left="pinky-finger-tip" radius="0.004" visible="false" physx-body="type: kinematic;"></a-sphere>
+            <a-sphere data-left="thumb-tip" radius="0.004" visible="false" physx-body="type: kinematic;"></a-sphere>
+            
+          </a-entity>
+        <!-- End of Handy-controls -->
+        
+      </a-entity>
+      <!--End of cameraRig-->
+              
+    </a-scene>
+  </body>
+</html>
